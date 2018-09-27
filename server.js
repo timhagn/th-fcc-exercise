@@ -84,7 +84,7 @@ app.post('/api/exercise/add', async function (req, res) {
         if (req.body.date) exercise.date = new Date(req.body.date);
         userToAddExercise.exercises.push(exercise);
         userToAddExercise.save((err, data) => {
-          err ? res.json({error: 'save failure'}) :
+          err ? res.json({error: 'exercise save failure'}) :
               res.send(data);
         });
       }
@@ -98,6 +98,24 @@ app.post('/api/exercise/add', async function (req, res) {
   }
 });
 
+// Get list of all users.
+app.get('/api/exercise/users', (req, res) => {
+  User.find((err, data) => {
+    if (err || !data) {
+      res.json({error: 'error retrieving users'})
+    }
+    else {
+      const users = data.map(item => {
+        return {
+          "username": item.username,
+          "_id": item._id
+        }
+      });
+      console.log(users);
+      res.send(data);
+    }
+  });
+});
 
 function findUserByName(username) {
   return new Promise((resolve, reject) => {
