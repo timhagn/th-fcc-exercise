@@ -81,7 +81,7 @@ app.post('/api/exercise/add', async function (req, res) {
           description: req.body.description,
           duration: req.body.duration,
         };
-        if (req.body.date) exercise.date = new Date(req.body.date);
+        if (isDateValid(req.body.date)) exercise.date = new Date(req.body.date);
         userToAddExercise.exercises.push(exercise);
         userToAddExercise.save((err, data) => {
           err ? res.json({error: 'exercise save failure'}) :
@@ -112,11 +112,70 @@ app.get('/api/exercise/users', (req, res) => {
         }
       });
       console.log(users);
-      res.send(data);
+      res.send(users);
     }
   });
 });
 
+// Get (filtered) list of exercises for userId.
+app.get('/api/exercise/log', async function (req, res) {
+  if (req.query.userId) {
+    let userExercised = await findUserById(req.query.userId);
+    if (userExercised) {
+      let exercises = userExercised.exercises;
+      const totalExerciseCount = exercises.length;
+
+      const fromDate = new Date(req.query.from);
+      const toDate = new Date(req.query.to);
+      const limit = Number(req.query.limit);
+
+      // Was an optional from (Date) given?
+      if(isDateValid(fromDate)){
+        exercises = exercises.filter(
+            (item) => (item.date >= fromDate)
+        );
+      }
+      // Was an optional to (Date) given?
+      if (isDateValid(toDate)){
+        exercises = exercises.filter(
+            (item) => (item.date <= toDate)
+        );
+      }
+      // Was an optional limit given? Then apply if applicable.
+      if (!isNaN(limit) && exercises.length > limit){
+        exercises = exercises.slice(0, limit);
+      }
+
+      // Clean up Exercises.
+      const userExercises = exercises.map(item => {
+        return {
+          "description": item.description,
+          "duration": item.duration,
+          "date": item.date
+        }
+      });
+      // Build User Object.
+      const userObject = {
+        "username": userExercised.username,
+        "_id": userExercised._id,
+        "total_exercise_count": totalExerciseCount,
+        userExercises
+      };
+      // And return.
+      res.json(userObject);
+    }
+  }
+  else {
+    res.json({error: 'user not found'})
+  }
+});
+
+// Checks if a Date is Valid.
+function isDateValid(date) {
+  return date instanceof Date && !isNaN(date);
+}
+
+// Async function to get User by username.
 function findUserByName(username) {
   return new Promise((resolve, reject) => {
     User.findOne(
@@ -126,6 +185,7 @@ function findUserByName(username) {
   });
 }
 
+// Async function to get User by userid.
 function findUserById(userid) {
   return new Promise((resolve, reject) => {
     User.findById(
